@@ -12,16 +12,14 @@
   "license": "Apache-2.0",
   "require": {
     "php": ">7.2",
-    "ext-json": "*",
-    "ext-libxml": "*",
-    "ext-mbstring": "*",
-    "ext-simplexml": "*",
-    "ext-ctype": "*",
-    "doctrine/annotations": "^1.6.0"
+    "doctrine/annotations": "^1.6.0",
+    "php-di/phpdoc-reader": "^2.1.0",
+    "jeekens/basics": "^0.0.1"
   },
   "autoload": {
     "psr-4": {
-      "Jeekens\\Annotation\\": "src/"
+      "Jeekens\\Annotation\\": "src/",
+      "Test\\" : "test/"
     }
   },
   "minimum-stability": "dev"
