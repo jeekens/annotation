@@ -13,7 +13,6 @@
   "require": {
     "php": ">7.2",
     "doctrine/annotations": "^1.6.0",
-    "php-di/phpdoc-reader": "^2.1.0",
     "jeekens/basics": "^1.0.0"
   },
   "autoload": {

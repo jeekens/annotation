@@ -1,9 +1,12 @@
-<?php declare(strict_types = 1);
+<?php declare(strict_types=1);
 
 
-namespace Jeekens\Annotations;
+namespace Jeekens\Annotation;
 
 
+use ReflectionClass;
+use Doctrine\Common\Annotations\AnnotationReader;
+use Doctrine\Common\Annotations\AnnotationRegistry;
 
 class Scan
 {
@@ -61,15 +64,15 @@ class Scan
     }
 
     /**
-     * @param $file
+     * @param $fileOrDir
      *
      * @return $this
      */
     public function addIgnoreFileOrDir($fileOrDir)
     {
-        $this->ignoreFile = array_merge(
+        $this->ignoreFileOrDir = array_merge(
             $this->ignoreFileOrDir,
-            (array) $fileOrDir
+            (array)$fileOrDir
         );
         return $this;
     }
@@ -91,7 +94,7 @@ class Scan
     {
         $this->dir = array_merge(
             $this->dir,
-            (array) $dir
+            (array)$dir
         );
         return $this;
     }
@@ -111,13 +114,57 @@ class Scan
         $allFile = [];
 
         foreach ($this->dir as $dir) {
-            if (($files = $this->scanPhpFile($dir)) && ! empty($files)) {
+            if (($files = $this->scanPhpFile($dir)) && !empty($files)) {
                 $allFile = array_merge($allFile, $files);
             }
         }
+
+        $notIgnoreFile = array_filter($allFile, function ($file) {
+            return $this->fileNotIgnore($file);
+        });
+
+        $allClass = array_filter(array_map(function ($file) {
+            $class = get_class_from_file($file);
+            return empty($class) ? null : $class;
+        }, $notIgnoreFile));
+
+        $notIgnoreClass = array_filter($allClass, function ($className) {
+            return $this->classNotIgnore($className);
+        });
+
+        AnnotationRegistry::registerLoader('class_exists');
+
+        foreach ($notIgnoreClass as $class) {
+
+            if (! class_exists($class)) {
+                continue;
+            }
+
+            $reflectionClass = new ReflectionClass($class);
+            $annotationReader = new AnnotationReader();
+            $classAnnotations = $annotationReader->getClassAnnotations($reflectionClass);
+
+            $methods = $reflectionClass->getMethods();
+
+            foreach ($methods as $method) {
+                $methodAnnotation = $annotationReader->getMethodAnnotations($method);
+            }
+
+            $properties = $reflectionClass->getProperties();
+
+            foreach ($properties as $property) {
+                $propertieAnnotation = $annotationReader->getPropertyAnnotations($property);
+            }
+        }
+
     }
 
-
+    /**
+     * @param string $dir
+     * @param null $files
+     *
+     * @return array
+     */
     private function scanPhpFile(string $dir, &$files = null)
     {
         if ($files == null) {
@@ -143,6 +190,8 @@ class Scan
         } else {
             return $files;
         }
+
+        return $files;
     }
 
     /**
@@ -150,15 +199,15 @@ class Scan
      *
      * @return bool
      */
-    private function fileIsIgnore(string $filePath)
+    private function fileNotIgnore(string $filePath)
     {
         foreach ($this->ignoreFileOrDir as $pattern) {
             if (preg_match("#{$pattern}#", $filePath)) {
-                return true;
+                return false;
             }
         }
 
-        return false;
+        return true;
     }
 
     /**
@@ -166,15 +215,15 @@ class Scan
      *
      * @return bool
      */
-    private function classIsIgnore(string $className)
+    private function classNotIgnore(string $className)
     {
         foreach ($this->ignoreNameSpaceOrClass as $pattern) {
             if (preg_match("#{$pattern}#", $className)) {
-                return true;
+                return false;
             }
         }
 
-        return false;
+        return true;
     }
 
 }

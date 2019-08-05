@@ -1,7 +1,7 @@
 <?php declare(strict_types = 1);
 
 
-namespace Jeekens\Annotation\Annotation\Handler;
+namespace Jeekens\Annotation\Annotations\Handler;
 
 
 use ReflectionClass;
