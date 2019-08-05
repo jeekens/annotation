@@ -11,7 +11,7 @@ class Scan
     /**
      * @var array
      */
-    private $ignoreNameSpace = [];
+    private $ignoreNameSpaceOrClass = [];
 
     /**
      * @var array
@@ -21,7 +21,7 @@ class Scan
     /**
      * @var array
      */
-    private $ignoreFile = [];
+    private $ignoreFileOrDir = [];
 
     /**
      * @var array
@@ -37,27 +37,27 @@ class Scan
     }
 
     /**
-     * @param array $nameSpace
+     * @param array $nameSpaceOrClass
      */
-    public function setIgnoreNameSpace(array $nameSpace)
+    public function setIgnoreNameSpaceOrClass(array $nameSpaceOrClass)
     {
-        $this->ignoreNameSpace = $nameSpace;
+        $this->ignoreNameSpaceOrClass = $nameSpaceOrClass;
     }
 
     /**
-     * @param string|array $nameSpace
+     * @param string|array $nameSpaceOrClass
      */
-    public function addIgnoreNameSpace($nameSpace)
+    public function addIgnoreNameSpaceOrClass($nameSpaceOrClass)
     {
-        $this->ignoreNameSpace[] = $nameSpace;
+        $this->ignoreNameSpaceOrClass[] = $nameSpaceOrClass;
     }
 
     /**
-     * @param array $file
+     * @param array $fileOrDir
      */
-    public function setIgnoreFile(array $file)
+    public function setIgnoreFileOrDir(array $fileOrDir)
     {
-        $this->ignoreFile = $file;
+        $this->ignoreFileOrDir = $fileOrDir;
     }
 
     /**
@@ -65,11 +65,11 @@ class Scan
      *
      * @return $this
      */
-    public function addIgnoreFile($file)
+    public function addIgnoreFileOrDir($fileOrDir)
     {
         $this->ignoreFile = array_merge(
-            $this->ignoreFile,
-            (array) $file
+            $this->ignoreFileOrDir,
+            (array) $fileOrDir
         );
         return $this;
     }
@@ -100,9 +100,81 @@ class Scan
      * @param string $annotation
      * @param string $handler
      */
-    public function addAnnotationHandler(string $annotation, string $handler)
+    private function addAnnotationHandler(string $annotation, string $handler)
     {
         $this->annotationHandler[$annotation] = $handler;
+    }
+
+
+    public function run()
+    {
+        $allFile = [];
+
+        foreach ($this->dir as $dir) {
+            if (($files = $this->scanPhpFile($dir)) && ! empty($files)) {
+                $allFile = array_merge($allFile, $files);
+            }
+        }
+    }
+
+
+    private function scanPhpFile(string $dir, &$files = null)
+    {
+        if ($files == null) {
+            $files = array();
+        }
+
+        if (is_dir($dir)) {
+            if ($handle = opendir($dir)) {
+                while (($file = readdir($handle)) !== false) {
+                    if ($file != '.' && $file != '..') {
+                        if (is_dir($dir . '/' . $file)) {
+                            $this->scanPhpFile($dir . '/' . $file, $files);
+                        } else {
+                            if (pathinfo($file, PATHINFO_EXTENSION) == 'php') {
+                                $files[] = $dir . '/' . $file;
+                            }
+                        }
+                    }
+                }
+                closedir($handle);
+                return $files;
+            }
+        } else {
+            return $files;
+        }
+    }
+
+    /**
+     * @param string $filePath
+     *
+     * @return bool
+     */
+    private function fileIsIgnore(string $filePath)
+    {
+        foreach ($this->ignoreFileOrDir as $pattern) {
+            if (preg_match("#{$pattern}#", $filePath)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param string $className
+     *
+     * @return bool
+     */
+    private function classIsIgnore(string $className)
+    {
+        foreach ($this->ignoreNameSpaceOrClass as $pattern) {
+            if (preg_match("#{$pattern}#", $className)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
 }
