@@ -1,4 +1,4 @@
-<?php declare(strict_types = 1);
+<?php declare(strict_types=1);
 
 
 namespace Jeekens\Annotation\Annotations\Handler;
@@ -6,7 +6,7 @@ namespace Jeekens\Annotation\Annotations\Handler;
 
 use ReflectionClass;
 
-abstract class Handler
+abstract class Handler implements HandlerInterface
 {
 
     /**
@@ -29,7 +29,7 @@ abstract class Handler
      *
      * @var string
      */
-    protected $className = '';
+    protected $className;
 
     /**
      * Class reflect
@@ -46,6 +46,16 @@ abstract class Handler
     protected $classAnnotations = [];
 
     /**
+     * @var string
+     */
+    protected $methodName = '';
+
+    /**
+     * @var string
+     */
+    protected $propertyName = '';
+
+    /**
      * Parser constructor.
      *
      * @param string           $className
@@ -57,6 +67,42 @@ abstract class Handler
         $this->className        = $className;
         $this->reflectClass     = $reflectionClass;
         $this->classAnnotations = $classAnnotations;
+    }
+
+    /**
+     * Set method name
+     *
+     * @param string $methodName
+     */
+    public function setMethodName(string $methodName)
+    {
+        $this->methodName = $methodName;
+    }
+
+    /**
+     * Set property name
+     *
+     * @param string $propertyName
+     */
+    public function setPropertyName(string $propertyName)
+    {
+        $this->propertyName = $propertyName;
+    }
+
+    /**
+     * @param string $annotationClassName
+     *
+     * @return bool
+     */
+    public function classHasAnnotation(string $annotationClassName)
+    {
+        foreach ($this->classAnnotations as $annotation) {
+            if ($annotation instanceof $annotationClassName) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
 }
