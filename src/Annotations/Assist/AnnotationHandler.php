@@ -1,11 +1,11 @@
-<?php declare(strict_types = 1);
+<?php declare(strict_types=1);
 
 
 namespace Jeekens\Annotation\Annotations\Assist;
 
 
-use Doctrine\Common\Annotations\Annotation;
 use Doctrine\Common\Annotations\Annotation\Target;
+use Jeekens\Annotation\Exception\AnnotationException;
 
 /**
  * Class AnnotationHandler
@@ -21,18 +21,26 @@ class AnnotationHandler
 
     /**
      * @var string
-     * @Required()
      */
     protected $annotation;
 
-
+    /**
+     * @param array $values
+     *
+     * @throws AnnotationException
+     */
     public function __construct(array $values)
     {
         if (isset($values['value'])) {
             $this->annotation = $values['value'];
         }
+
         if (isset($values['annotation'])) {
             $this->annotation = $values['annotation'];
+        }
+
+        if (empty($this->annotation)) {
+            throw new AnnotationException('Property annotation is not set!');
         }
     }
 
