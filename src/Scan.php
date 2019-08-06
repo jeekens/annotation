@@ -3,6 +3,8 @@
 
 namespace Jeekens\Annotation;
 
+
+use Closure;
 use ReflectionClass;
 use Doctrine\Common\Annotations\AnnotationReader;
 use Doctrine\Common\Annotations\AnnotationRegistry;
@@ -28,6 +30,24 @@ class Scan
      */
     private $ignoreFileOrDir = [];
 
+    /**
+     * @var array
+     */
+    private $observers = [];
+
+
+    const BEFORE_SCAN_DIR = 'before_scan_dir';
+    const AFTER_SCAN_DIR = 'after_scan_dir';
+    const DISCOVERY_DIR = 'discovery_dir';
+    const DISCOVERY_FILE = 'discovery_file';
+    const BEFORE_IGNORE_ALL_FILE_OR_DIR = 'before_ignore_all_file_or_dir';
+    const IGNORE_FILE_OR_DIR = 'ignore_file_or_dir';
+    const AFTER_IGNORE_ALL_FILE_OR_DIR = 'after_ignore_all_file_or_dir';
+    const DISCOVERY_CLASS = 'discovery_class';
+    const AFTER_SCAN_CLASS = 'after_scan_class';
+    const AFTER_IGNORE_CLASS_OR_NAMESPACE = 'after_ignore_class_or_namespace';
+    const IGNORE_CLASS_OR_NAMESPACE = 'ignore_class_or_namespace';
+    const BEFORE_IGNORE_ALL_CLASS_OR_NAMESPACE = 'before_ignore_all_class_or_namespace';
 
     public function __construct(? array $options = null)
     {
@@ -105,23 +125,54 @@ class Scan
         $allFile = [];
         // 扫描全部文件夹获取所有文件路径
         foreach ($this->dir as $dir) {
+            $this->notify(self::BEFORE_SCAN_DIR, [$dir, $allFile]);
             if (($files = $this->scanPhpFile($dir)) && !empty($files)) {
                 $allFile = array_merge($allFile, $files);
             }
+            $this->notify(self::AFTER_SCAN_DIR, [$dir, $files, $allFile]);
         }
+
+        $this->notify(self::BEFORE_IGNORE_ALL_FILE_OR_DIR, [$allFile]);
+
         // 过滤需要忽略的文件
         $notIgnoreFile = array_filter($allFile, function ($file) {
-            return $this->fileNotIgnore($file);
+            if ($this->fileNotIgnore($file)) {
+                return true;
+            } else {
+                $this->notify(self::IGNORE_FILE_OR_DIR, [$file]);
+                return false;
+            }
         });
+
+        $this->notify(self::AFTER_IGNORE_ALL_FILE_OR_DIR, [$allFile, $notIgnoreFile]);
+
         // 扫描所有文件并取出文件内的类名
         $allClass = array_filter(array_map(function ($file) {
+
             $class = get_class_from_file($file);
-            return empty($class) ? null : $class;
+
+            if (! empty($class)) {
+                $this->notify(self::DISCOVERY_CLASS, [$file, $class]);
+                return $class;
+            } else {
+                return null;
+            }
         }, $notIgnoreFile));
+
+        $this->notify(self::AFTER_SCAN_CLASS, [$allClass]);
+
         // 过滤掉需要忽略的类
         $notIgnoreClass = array_filter($allClass, function ($className) {
-            return $this->classNotIgnore($className);
+            if ($this->classNotIgnore($className)) {
+                return true;
+            } else {
+                $this->notify(self::IGNORE_CLASS_OR_NAMESPACE, [$className]);
+                return false;
+            }
         });
+
+        $this->notify(self::BEFORE_IGNORE_ALL_CLASS_OR_NAMESPACE, [$allFile, $allClass, $notIgnoreFile, $notIgnoreClass]);
+
         // 注册注解加载规则
         AnnotationRegistry::registerLoader('class_exists');
         // 初始化需要使用的变量
@@ -240,11 +291,14 @@ class Scan
             if ($handle = opendir($dir)) {
                 while (($file = readdir($handle)) !== false) {
                     if ($file != '.' && $file != '..') {
-                        if (is_dir($dir . '/' . $file)) {
-                            $this->scanPhpFile($dir . '/' . $file, $files);
+                        $path = $dir . '/' . $file;
+                        if (is_dir($path)) {
+                            $this->notify(self::DISCOVERY_DIR, [$path]);
+                            $this->scanPhpFile($path, $files);
                         } else {
                             if (pathinfo($file, PATHINFO_EXTENSION) == 'php') {
-                                $files[] = $dir . '/' . $file;
+                                $this->notify(self::DISCOVERY_FILE, [$path]);
+                                $files[] = $path;
                             }
                         }
                     }
@@ -289,6 +343,32 @@ class Scan
         }
 
         return true;
+    }
+
+    /**
+     * @param string $event
+     * @param Closure $closure
+     */
+    public function addObserver(string $event, Closure $closure)
+    {
+        $this->observers[$event][] = $closure;
+    }
+
+    /**
+     * @param string $event
+     * @param array $param
+     */
+    private function notify(string $event, array $param)
+    {
+        $observers = $this->observers[$event] ?? [];
+        foreach($observers as $observer)
+        {
+            if (empty($param)) {
+                $observer();
+            } else {
+                call_user_func_array($observer, $param);
+            }
+        }
     }
 
 }
