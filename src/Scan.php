@@ -4,7 +4,21 @@
 namespace Jeekens\Annotation;
 
 
+use function array_filter;
+use function array_map;
+use function array_merge;
+use function call_user_func_array;
+use function class_exists;
+use function class_init;
+use function closedir;
 use Closure;
+use function get_class;
+use function get_class_from_file;
+use function is_dir;
+use function opendir;
+use function pathinfo;
+use function preg_match;
+use function readdir;
 use ReflectionClass;
 use Doctrine\Common\Annotations\AnnotationReader;
 use Doctrine\Common\Annotations\AnnotationRegistry;
