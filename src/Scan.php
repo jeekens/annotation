@@ -59,7 +59,6 @@ class Scan
     const AFTER_IGNORE_ALL_FILE_OR_DIR = 'after_ignore_all_file_or_dir';
     const DISCOVERY_CLASS = 'discovery_class';
     const AFTER_SCAN_CLASS = 'after_scan_class';
-    const AFTER_IGNORE_CLASS_OR_NAMESPACE = 'after_ignore_class_or_namespace';
     const IGNORE_CLASS_OR_NAMESPACE = 'ignore_class_or_namespace';
     const BEFORE_IGNORE_ALL_CLASS_OR_NAMESPACE = 'before_ignore_all_class_or_namespace';
 
