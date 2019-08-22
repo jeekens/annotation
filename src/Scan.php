@@ -24,6 +24,7 @@ use Doctrine\Common\Annotations\AnnotationRegistry;
 use Jeekens\Annotation\Annotations\Handler\Handler;
 use Jeekens\Annotation\Annotations\Assist\AnnotationHandler;
 use Jeekens\Annotation\Annotations\Handler\HandlerInterface;
+use function to_array;
 
 class Scan
 {
@@ -75,66 +76,88 @@ class Scan
     }
 
     /**
-     * @param array $nameSpaceOrClass
+     * 设置需要忽略的注解
+     *
+     * @param array $annotations
      */
-    public function setIgnoreNameSpaceOrClass(array $nameSpaceOrClass)
+    public function setIgnoreAnnotations(array $annotations)
     {
-        $this->ignoreNameSpaceOrClass = $nameSpaceOrClass;
+        $this->ignoreAnnotations = $annotations;
     }
 
     /**
+     * 添加需要忽略的注解
+     *
+     * @param string|array $annotations
+     */
+    public function addIgnoreAnnotations($annotations)
+    {
+        $this->ignoreAnnotations = array_merge($this->ignoreAnnotations, to_array($annotations));
+    }
+
+    /**
+     * 设置需要忽略的命名空间或类名，支持正则
+     *
+     * @param string|array $nameSpaceOrClass
+     */
+    public function setIgnoreNameSpaceOrClass($nameSpaceOrClass)
+    {
+        $this->ignoreNameSpaceOrClass = to_array($nameSpaceOrClass);
+    }
+
+    /**
+     * 添加需要忽略的命名空间或类名，支持正则
+     *
      * @param string|array $nameSpaceOrClass
      */
     public function addIgnoreNameSpaceOrClass($nameSpaceOrClass)
     {
-        $this->ignoreNameSpaceOrClass[] = $nameSpaceOrClass;
+        $this->ignoreNameSpaceOrClass = array_merge($this->ignoreNameSpaceOrClass, to_array($nameSpaceOrClass));
     }
 
     /**
-     * @param array $fileOrDir
-     */
-    public function setIgnoreFileOrDir(array $fileOrDir)
-    {
-        $this->ignoreFileOrDir = $fileOrDir;
-    }
-
-    /**
-     * @param $fileOrDir
+     * 设置需要忽略的未鉴或目录
      *
-     * @return $this
+     * @param string|array $fileOrDir
+     */
+    public function setIgnoreFileOrDir($fileOrDir)
+    {
+        $this->ignoreFileOrDir = to_array($fileOrDir);
+    }
+
+    /**
+     * 添加需要忽略的文件或目录
+     *
+     * @param string|array $fileOrDir
      */
     public function addIgnoreFileOrDir($fileOrDir)
     {
-        $this->ignoreFileOrDir = array_merge(
-            $this->ignoreFileOrDir,
-            (array)$fileOrDir
-        );
-        return $this;
+        $this->ignoreFileOrDir = array_merge($this->ignoreFileOrDir, to_array($fileOrDir));
     }
 
     /**
-     * @param array $dir
-     */
-    public function setDir(array $dir)
-    {
-        $this->dir = $dir;
-    }
-
-    /**
-     * @param string|array $dir
+     * 设置扫描的目录
      *
-     * @return $this
+     * @param $dir
+     */
+    public function setDir($dir)
+    {
+        $this->dir = to_array($dir);
+    }
+
+    /**
+     * 添加需要扫描的目录
+     *
+     * @param $dir
      */
     public function addDir($dir)
     {
-        $this->dir = array_merge(
-            $this->dir,
-            (array)$dir
-        );
-        return $this;
+        $this->dir = array_merge($this->dir, to_array($dir));
     }
 
     /**
+     * 开始扫描注解
+     *
      * @throws \Doctrine\Common\Annotations\AnnotationException
      * @throws \ReflectionException
      */
@@ -301,6 +324,8 @@ class Scan
     }
 
     /**
+     * 扫描所有php文件
+     *
      * @param string $dir
      * @param null $files
      *
@@ -339,6 +364,8 @@ class Scan
     }
 
     /**
+     * 判断当前文件或目录是否被忽略
+     *
      * @param string $filePath
      *
      * @return bool
@@ -355,6 +382,8 @@ class Scan
     }
 
     /**
+     * 判断当前类是否被忽略
+     *
      * @param string $className
      *
      * @return bool
@@ -371,6 +400,8 @@ class Scan
     }
 
     /**
+     * 添加事件订阅者
+     *
      * @param string $event
      * @param Closure $closure
      */
@@ -380,6 +411,8 @@ class Scan
     }
 
     /**
+     * 发送事件消息
+     *
      * @param string $event
      * @param array $param
      */
