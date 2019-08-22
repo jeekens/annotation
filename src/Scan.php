@@ -4,8 +4,7 @@
 namespace Jeekens\Annotation;
 
 
-use function array_filter;
-use function array_map;
+use Jeekens\Basics\Fs;
 use function array_merge;
 use function call_user_func_array;
 use function class_exists;
@@ -49,6 +48,10 @@ class Scan
      */
     private $observers = [];
 
+    private $ignoreAnnotations = [
+        'from', 'author', 'link', 'see', 'license', 'copyright'
+    ];
+
 
     const BEFORE_SCAN_DIR = 'before_scan_dir';
     const AFTER_SCAN_DIR = 'after_scan_dir';
@@ -61,6 +64,8 @@ class Scan
     const AFTER_SCAN_CLASS = 'after_scan_class';
     const IGNORE_CLASS_OR_NAMESPACE = 'ignore_class_or_namespace';
     const BEFORE_IGNORE_ALL_CLASS_OR_NAMESPACE = 'before_ignore_all_class_or_namespace';
+    const CLASS_CANNOT_LOAD_PROPERLY = 'class_cannot_load_properly';
+
 
     public function __construct(? array $options = null)
     {
@@ -138,6 +143,7 @@ class Scan
         $allFile = [];
         // 扫描全部文件夹获取所有文件路径
         foreach ($this->dir as $dir) {
+            $dir = Fs::getAbsPath($dir); // 路径转化为绝对路径
             $this->notify(self::BEFORE_SCAN_DIR, [$dir, $allFile]);
             if (($files = $this->scanPhpFile($dir)) && !empty($files)) {
                 $allFile = array_merge($allFile, $files);
@@ -147,54 +153,60 @@ class Scan
 
         $this->notify(self::BEFORE_IGNORE_ALL_FILE_OR_DIR, [$allFile]);
 
+        $notIgnoreFile = []; // 未过滤文件
+
         // 过滤需要忽略的文件
-        $notIgnoreFile = array_filter($allFile, function ($file) {
+        foreach ($allFile as $file) {
             if ($this->fileNotIgnore($file)) {
-                return true;
+                $notIgnoreFile[] = $file;
             } else {
                 $this->notify(self::IGNORE_FILE_OR_DIR, [$file]);
-                return false;
             }
-        });
+        }
 
         $this->notify(self::AFTER_IGNORE_ALL_FILE_OR_DIR, [$allFile, $notIgnoreFile]);
 
-        // 扫描所有文件并取出文件内的类名
-        $allClass = array_filter(array_map(function ($file) {
+        $allClass = []; // 发现的类名
 
+        // 扫描所有文件并取出文件内的类名
+        foreach ($notIgnoreFile as $file) {
             $class = get_class_from_file($file);
 
             if (! empty($class)) {
+                $allClass[$file] = $class;
                 $this->notify(self::DISCOVERY_CLASS, [$file, $class]);
-                return $class;
-            } else {
-                return null;
             }
-        }, $notIgnoreFile));
+        }
 
         $this->notify(self::AFTER_SCAN_CLASS, [$allClass]);
 
+        $notIgnoreClass = []; // 未被忽略的类
+
         // 过滤掉需要忽略的类
-        $notIgnoreClass = array_filter($allClass, function ($className) {
+        foreach ($allClass as $file => $className) {
             if ($this->classNotIgnore($className)) {
-                return true;
+                $notIgnoreClass[$file] = $className;
             } else {
-                $this->notify(self::IGNORE_CLASS_OR_NAMESPACE, [$className]);
-                return false;
+                $this->notify(self::IGNORE_CLASS_OR_NAMESPACE, [$className, $file]);
             }
-        });
+        }
 
         $this->notify(self::BEFORE_IGNORE_ALL_CLASS_OR_NAMESPACE, [$allFile, $allClass, $notIgnoreFile, $notIgnoreClass]);
 
-        // 注册注解加载规则
-        AnnotationRegistry::registerLoader('class_exists');
+        AnnotationRegistry::registerLoader('class_exists'); // 注册注解加载规则
+        array_map(AnnotationReader::class.'::addGlobalIgnoredName', $this->ignoreAnnotations); // 注册全部需要忽略的注解标签
         // 初始化需要使用的变量
         $classAnnotations = $propertiesAnnotation = $methodAnnotation = $annotationHandler = [];
         $annotationReader = new AnnotationReader();
+        $includedFiles = get_included_files();
 
-        foreach ($notIgnoreClass as $class) {
+        foreach ($notIgnoreClass as $file => $class) {
+            // 防止扫描时重复加载文件
+            $autoload = in_array($file, $includedFiles, true);
+            $includedFiles[] = $file;
             // 如果类不能自动加载则跳过注解处理流程
-            if (! class_exists($class)) {
+            if (! class_exists($class, !$autoload)) {
+                $this->notify(self::CLASS_CANNOT_LOAD_PROPERLY, [$class, $file]);
                 continue;
             }
             // 获取当前类的反射api
