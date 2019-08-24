@@ -5,6 +5,7 @@ namespace Jeekens\Annotation;
 
 
 use Jeekens\Basics\Fs;
+use Jeekens\Basics\Spl\Observer\abstractEventGenerator;
 use function array_merge;
 use function call_user_func_array;
 use function class_exists;
@@ -26,7 +27,7 @@ use Jeekens\Annotation\Annotations\Assist\AnnotationHandler;
 use Jeekens\Annotation\Annotations\Handler\HandlerInterface;
 use function to_array;
 
-class Scan
+class Scan extends abstractEventGenerator
 {
 
     /**
@@ -47,8 +48,6 @@ class Scan
     /**
      * @var array
      */
-    private $observers = [];
-
     private $ignoreAnnotations = [
         'from', 'author', 'link', 'see', 'license', 'copyright'
     ];
@@ -397,36 +396,6 @@ class Scan
         }
 
         return true;
-    }
-
-    /**
-     * 添加事件订阅者
-     *
-     * @param string $event
-     * @param Closure $closure
-     */
-    public function addObserver(string $event, Closure $closure)
-    {
-        $this->observers[$event][] = $closure;
-    }
-
-    /**
-     * 发送事件消息
-     *
-     * @param string $event
-     * @param array $param
-     */
-    private function notify(string $event, array $param)
-    {
-        $observers = $this->observers[$event] ?? [];
-        foreach($observers as $observer)
-        {
-            if (empty($param)) {
-                $observer();
-            } else {
-                call_user_func_array($observer, $param);
-            }
-        }
     }
 
 }
