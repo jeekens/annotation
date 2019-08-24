@@ -1,7 +1,7 @@
 {
   "name": "jeekens/annotation",
   "type": "library",
-  "version": "v1.0.0",
+  "version": "v1.0.1",
   "keywords": [
     "php",
     "swoole",
