@@ -4,12 +4,12 @@
 namespace Jeekens\Annotation;
 
 
-use Jeekens\Std\Event\EventsAwareTrait;
 use Jeekens\Std\FileSystem\FileSystem;
 use Jeekens\Std\Str;
 use SplFileInfo;
 use SplFileObject;
 use function array_merge;
+use function call;
 use function class_exists;
 use function get_class;
 use function in_array;
@@ -39,8 +39,6 @@ use const T_STRING;
 final class Scan
 {
 
-    use EventsAwareTrait;
-
     /**
      * @var array
      */
@@ -67,6 +65,11 @@ final class Scan
     private $ignoreAnnotations = [
         'from', 'author', 'link', 'see', 'license', 'copyright'
     ];
+
+    /**
+     * @var array
+     */
+    private $observers = [];
 
 
     public function __construct(? array $options = null)
@@ -194,12 +197,12 @@ final class Scan
                 if ($item->isDir()) {
                     $dirName = rtrim($item->getFilename(), '.');
                     // 发现目录
-                    $this->trigger('annotation.discovery.dir', $this, $dirName);
+                    $this->notify('annotation.discovery.dir', $dirName);
                 } elseif ($item->isFile()) {
                     $className = $this->getClassNameFromFile($item->openFile());
                     $isIgnore = empty($className) || !$this->classNotIgnore($className);
                     // 发现文件
-                    $this->trigger('annotation.discovery.file', $this, [$item->getPathname(), $isIgnore, $className]);
+                    $this->notify('annotation.discovery.file', $item->getPathname(), $isIgnore, $className);
 
                     if (!$isIgnore) {
                         $notIgnoreClass[$item->getPathname()] = $className;
@@ -223,7 +226,7 @@ final class Scan
             // 如果类不能自动加载则跳过注解处理流程
             if (! class_exists($class, !$autoload)) {
                 // 类无法正确加载
-                $this->trigger('annotation.classNotLoadProperly', $this, [[$class, $file]]);
+                $this->notify('annotation.classNotLoadProperly', $class, $file);
                 continue;
             }
             // 获取当前类的反射api
@@ -403,6 +406,28 @@ final class Scan
         }
 
         return true;
+    }
+
+    /**
+     * @param string $eventName
+     * @param callable $callable
+     */
+    public function addObserver(string $eventName, callable $callable)
+    {
+        $this->observers[$eventName][] = $callable;
+    }
+
+    /**
+     * @param string $eventName
+     * @param mixed ...$args
+     */
+    protected function notify(string $eventName, ... $args)
+    {
+        $observers = $this->observers[$eventName] ?? [];
+
+        foreach ($observers as $observer) {
+            call($observer, ...$args);
+        }
     }
 
 }
